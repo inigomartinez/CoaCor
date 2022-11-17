@@ -17,6 +17,7 @@ import gensim
 import time
 import pickle
 import code_retrieval
+from code_retrieval.configs import get_config
 
 # # to deal with version incompatible
 # import torch._utils
@@ -35,7 +36,8 @@ def get_opt():
     parser = argparse.ArgumentParser(description='a2c-train.py')
     # Data options
     parser.add_argument('-data', required=True, help='Path to the *-train.pt file from preprocess.py')
-    parser.add_argument('-lang', required=True, choices=['sql', 'python'], help='Language {python|sql}')
+    # parser.add_argument('-lang', required=True, choices=['sql', 'python'], help='Language {python|sql}')
+    parser.add_argument('-lang', required=True, choices=['sql', 'python', 'java'], help='Language {python|sql}')
     parser.add_argument('-data_name', default="", help="Data name, such as toy")
     parser.add_argument('-save_dir', required=True, help='Directory to save models')
     parser.add_argument("-load_from", help="Path to load a pretrained model.")
@@ -225,6 +227,9 @@ def main():
 
     dicts, supervised_data, rl_data, valid_data, test_data, DEV, EVAL = load_data(opt)
 
+    opt.qt_n_words = dicts['tgt'].size()
+    opt.code_n_words = dicts['src'].size()
+
     print("Building model...")
 
     use_critic = opt.start_reinforce is not None
@@ -269,7 +274,7 @@ def main():
     print("* number of parameters: %d" % nParams)
 
     if opt.sent_reward == "cr":
-        lib.RetReward.cr = code_retrieval.CrCritic()
+        lib.RetReward.cr = code_retrieval.CrCritic(get_config(opt))
 
     # Metrics.
     print("sent_reward: %s" % opt.sent_reward)

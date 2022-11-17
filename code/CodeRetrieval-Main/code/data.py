@@ -40,9 +40,9 @@ class StaQCDataset(data.Dataset):
         # 1. Load Preprocessed Dataset
         print("loading data...")
         print("Loading qt from %s..." % (data_dir + f_qt))
-        self.list_of_qt_strings = pickle.load(open(data_dir + f_qt))
+        self.list_of_qt_strings = pickle.load(open(data_dir + f_qt, 'rb'), encoding='latin1')
         print("Loading candidate from %s..." % (data_dir + f_cand))
-        self.list_of_cand_strings = pickle.load(open(data_dir + f_cand))
+        self.list_of_cand_strings = pickle.load(open(data_dir + f_cand, 'rb'), encoding='latin1')
 
         # Convert string of indices to list of indices
         self.processed_qt = self.get_preprocessed_text(self.list_of_qt_strings)
@@ -71,7 +71,7 @@ class StaQCDataset(data.Dataset):
                 string = data_point
             else:
                 string = data_point[1]
-            words = map(int, string.split())
+            words = list(map(int, string.split()))
             if self.PAD_token in words:
                 words = words[:words.index(self.PAD_token)]
             preprocessed_text.append(np.array(words))
@@ -128,9 +128,11 @@ class CodennDataset(data.Dataset):
         # 1. Load Preprocessed Dataset
         print("loading data...")
         print("Loading qt from %s..." % (data_dir + f_qt))
-        self.list_of_qt_strings = pickle.load(open(data_dir + f_qt))
+        self.list_of_qt_strings = pickle.load(open(data_dir + f_qt, 'rb'), encoding='latin1')
+
         print("Loading candidate from %s..." % (data_dir + f_cand))
-        self.list_of_cand_strings = pickle.load(open(data_dir + f_cand))
+        self.list_of_cand_strings = pickle.load(open(data_dir + f_cand, 'rb'), encoding='latin1')
+
 
         # Convert string of indices to list of indices
         self.processed_qt = self.get_preprocessed_text(self.list_of_qt_strings)
@@ -158,17 +160,17 @@ class CodennDataset(data.Dataset):
         for data_point in list_of_strings:
             if bool_strings:
                 string = data_point
-                words = map(int, string.split())
+                words = list(map(int, string.split()))
                 preprocessed_text.append(np.array(words))
             elif len(data_point) == 3:
                 string_list = data_point
                 words_list = []
                 for string in string_list:
-                    words_list.append(np.array(map(int, string.split())))
+                    words_list.append(np.array(list(map(int, string.split()))))
                 preprocessed_text.append(words_list)
             else:
                 string = data_point[1]
-                words = map(int, string.split())
+                words = list(map(int, string.split()))
                 preprocessed_text.append(np.array(words))
         return preprocessed_text
 
@@ -194,12 +196,12 @@ class CodennDataset(data.Dataset):
 
 
 def load_dict(filename):
-    return pickle.load(open(filename, 'rb'))
+    return pickle.load(open(filename, 'rb'), encoding='latin1')
 
 
 def limit_vocab(old_vocab_dict, vocab_length):
     new_vocab_dict = {}
-    for word, key in old_vocab_dict.iteritems():
+    for word, key in old_vocab_dict.items():
         if key < vocab_length:
             new_vocab_dict[word] = key
     return new_vocab_dict

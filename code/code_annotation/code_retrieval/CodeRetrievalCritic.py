@@ -8,8 +8,7 @@ import pdb
 import torch
 import torch.nn.functional as F
 
-from models import JointEmbeder
-from configs import get_config
+from .models import JointEmbeder
 
 GPU_ID = 0
 
@@ -21,12 +20,12 @@ torch.cuda.manual_seed_all(42)
 
 
 def load_dict(filename):
-    return pickle.load(open(filename, 'rb'))
+    return pickle.load(open(filename, 'rb'), encoding='latin1')
 
 
 def limit_vocab(old_vocab_dict, vocab_length):
     new_vocab_dict = {}
-    for word, key in old_vocab_dict.iteritems():
+    for word, key in old_vocab_dict.items():
         if key < vocab_length:
             new_vocab_dict[word] = key
     return new_vocab_dict
@@ -45,7 +44,7 @@ def processed_dataset(list_of_strings, PAD_ID):
         idx = data_point[0]
         if len(string) == 0:
             string = "%s" % str(PAD_ID)
-        words = map(int, string.split())
+        words = list(map(int, string.split()))
         preprocessed_text.append(np.array(words))
         idx2text[idx] = np.array(words)
     return preprocessed_text, idx2text
@@ -96,8 +95,8 @@ def get_mrr_score(real, predict):
 
 
 class CrCritic(object):
-    def __init__(self):
-        self.conf = get_config()
+    def __init__(self, conf):
+        self.conf = conf
 
         # loading vocab
         path = self.conf['workdir']

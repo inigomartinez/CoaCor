@@ -2,7 +2,7 @@ import lib
 from collections import defaultdict
 import pdb
 
-from codenn_bleu import splitPuncts
+from .codenn_bleu import splitPuncts
 
 # loading codenn truths
 codenn_goldMaps = []
@@ -57,7 +57,7 @@ def single_sentence_bleu(pair, tgt_dict):
     return score, pred
 
 def sentence_bleu(preds, golds, tgt_dict):
-    results = map(single_sentence_bleu, zip(preds, golds), [tgt_dict] * len(preds))
+    results = list(map(single_sentence_bleu, zip(preds, golds), [tgt_dict] * len(preds)))
     scores, preds = zip(*results)
     return scores, preds
 
