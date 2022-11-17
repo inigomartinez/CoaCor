@@ -5,7 +5,7 @@ def _adver(rs, _not_use):
     return [1 - r for r in rs]
 
 def _random(rs, _not_use):
-    return [random.random() for i in xrange(len(rs))]
+    return [random.random() for i in range(len(rs))]
 
 def _bin(rs, b):
     return [round(r * b) / b for r in rs]

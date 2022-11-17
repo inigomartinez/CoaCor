@@ -1,1 +1,1 @@
-from CodeRetrievalCritic import *
+from .CodeRetrievalCritic import *

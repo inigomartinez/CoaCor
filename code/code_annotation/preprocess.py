@@ -37,6 +37,7 @@ def get_opt():
     parser.add_argument('--EVAL_src', required=False, help="Path to tokenized EVAL source data.")
     parser.add_argument('--EVAL_tgt', required=False, help="Path to tokenized EVAL target data.")
     parser.add_argument('--EVAL_indices', required=False, help="Path to the indices of EVAL data.")
+    parser.add_argument('-word_vec_size', type=int, default=512, help='Word embedding sizes')
 
     opt = parser.parse_args()
     return opt
@@ -127,19 +128,23 @@ def main():
     torch.manual_seed(opt.seed)
 
     # load meta data
-    idx2tokenized_src = pickle.load(open(opt.token_src)) #src=code
-    idx2tokenized_tgt = pickle.load(open(opt.token_tgt)) #tgt=annotation
-    split_indices = pickle.load(open(opt.split_indices)) # a dict of {train/valid/test: iids}
+    # src=code
+    idx2tokenized_src = pickle.load(open(opt.token_src, 'rb'), encoding='latin1')
+    # tgt=annotation
+    idx2tokenized_tgt = pickle.load(open(opt.token_tgt, 'rb'), encoding='latin1')
+    # a dict of {train/valid/test: iids}
+    split_indices = pickle.load(open(opt.split_indices, 'rb'), encoding='latin1')
     split_indices["valid"] = split_indices["valid"][:(len(split_indices["valid"]) // 50 * 50)]
-    split_indices["test"] = split_indices["test"][:(len(split_indices["test"]) // 50 * 50)] #poolsize = 50
+    # poolsize = 50
+    split_indices["test"] = split_indices["test"][:(len(split_indices["test"]) // 50 * 50)]
 
     print("Data loaded!")
 
     if opt.src_word2id is not None:
-        src_word2id = pickle.load(open(opt.src_word2id))
+        src_word2id = pickle.load(open(opt.src_word2id, 'rb'), encoding='latin1')
         print("src vocab loaded!")
     if opt.tgt_word2id is not None:
-        tgt_word2id = pickle.load(open(opt.tgt_word2id))
+        tgt_word2id = pickle.load(open(opt.tgt_word2id, 'rb'), encoding='latin1')
         print("tgt vocab loaded!")
 
     train_src, train_tgt, valid_src, valid_tgt, test_src, test_tgt = [], [], [], [], [], []
@@ -216,8 +221,8 @@ def main():
         save_data['DEV'] = makeDataGeneral('DEV', DEV_src, DEV_tgt, DEV_indices, dicts, bool_ignore=False)
 
     if opt.EVAL_src and opt.EVAL_tgt and opt.EVAL_indices:
-        EVAL_idx2src = pickle.load(open(opt.EVAL_src, "rb"))
-        EVAL_idx2tgt = pickle.load(open(opt.EVAL_tgt, "rb"))
+        EVAL_idx2src = pickle.load(open(opt.EVAL_src, "rb"), encoding='latin1')
+        EVAL_idx2tgt = pickle.load(open(opt.EVAL_tgt, "rb"), encoding='latin1')
         EVAL_indices = pickle.load(open(opt.EVAL_indices, "rb"))
         
         EVAL_src, EVAL_tgt = [], []
@@ -231,9 +236,9 @@ def main():
     torch.save(save_data, opt.save_data + ".train.pt")
 
     # word2vec dump
-    code_w2v_model = gensim.models.Word2Vec(train_src, size=512, window=5, min_count=2, workers=16)
+    code_w2v_model = gensim.models.Word2Vec(train_src, vector_size=opt.word_vec_size, window=5, min_count=2, workers=16)
     code_w2v_model.save(opt.save_data + '.train_xe.src.gz')
-    comment_w2v_model = gensim.models.Word2Vec(train_tgt, size=512, window=5, min_count=2, workers=16)
+    comment_w2v_model = gensim.models.Word2Vec(train_tgt, vector_size=opt.word_vec_size, window=5, min_count=2, workers=16)
     comment_w2v_model.save(opt.save_data + '.train_xe.tgt.gz')
 
 

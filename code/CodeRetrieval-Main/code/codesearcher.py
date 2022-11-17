@@ -236,10 +236,14 @@ def parse_args():
                              " the `eval` mode evaluates models on a test set;"
                              " the `collect` mode collects model scores;",
                         required=True)
+    parser.add_argument('--lang', required=True, choices=['sql', 'python', 'java', 'typescript'], help='Language {python|sql|java|typescript}')
     parser.add_argument("--use_anno", type=int, default=0, help="Training QN CR?", required=True)
     parser.add_argument("--reload", type=int, default=-1, help=" Should I reload saved model, yes if reload>0?",
                         required=True)
     # model setup
+    parser.add_argument("--qt_n_words", type=int, default=10000, help="What is the qt vocabulary size?", required=True)
+    parser.add_argument("--code_n_words", type=int, default=10000, help="What is the code vocabulary size?", required=True)
+    parser.add_argument("--anno_n_words", type=int, default=10000, help="What is the anno vocabulary size?", required=True)
     parser.add_argument("--dropout", type=float, default=0.0, help="What is the dropout?", required=True)
     parser.add_argument("--emb_size", type=int, default=100, help="What is the embedding size?", required=True)
     parser.add_argument("--lstm_dims", type=int, default=200, help="What is the lstm dimension?", required=True)
@@ -345,7 +349,7 @@ if __name__ == '__main__':
 
         print("\nParameter requires_grad state: ")
         for name, param in model.named_parameters():
-            print name, param.requires_grad
+            print(name, param.requires_grad)
         print("")
 
         if conf['optimizer'] == 'adagrad':
