@@ -1,3 +1,6 @@
+from itertools import accumulate
+import operator
+from statistics import mean
 import numpy as np
 import time
 import math
@@ -82,6 +85,7 @@ def ACC(real, predict):
 
 
 def MAP(real, predict):
+    '''
     sum = 0.0
     for id, val in enumerate(real):
         try:
@@ -91,6 +95,14 @@ def MAP(real, predict):
         if index != -1:
             sum = sum + (id + 1) / float(index + 1)
     return sum / float(len(real))
+    '''
+    predict_good_pos = list(map(int, map(operator.eq, real, predict)))
+    accumulate_good = list(accumulate(predict_good_pos))
+    avg_precision = [(v / (e + 1)) for v, (e, d) in zip(accumulate_good, enumerate(predict_good_pos)) if d]
+    if not len(avg_precision):
+        return 0.0
+
+    return mean(avg_precision)
 
 
 def MRR(real, predict):
