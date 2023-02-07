@@ -75,6 +75,17 @@ MODEL_CONF = {
 }
 
 def wrap(b):
+    """
+    Parameters
+    ----------
+    b : tensor
+        the tensor to be wrapped
+
+    Returns
+    -------
+    tensor
+        the wrapped tensor
+    """
     b = torch.stack(b, 0).t().contiguous()
     if USE_CUDA:
         b = b.cuda()
@@ -82,6 +93,25 @@ def wrap(b):
     return b
 
 def _batchify(data, align_right=False, include_lengths=False, pad_id=None):
+    """
+    Parameters
+    ----------
+    data : array
+        the data to be set in a batch
+    pad_id : int
+        the identifier to be used as pad
+    align_right : bool
+        if the data should be right aligned
+    include_lengths : bool
+        if the lengths should also be returned
+
+    Returns
+    -------
+    tensor
+        the data batch properly padded
+    list
+        the lengths of the data
+    """
     lengths = [x.size(0) for x in data]
     max_length = max(lengths)
     out = data[0].new(len(data), max_length).fill_(pad_id)
@@ -96,6 +126,27 @@ def _batchify(data, align_right=False, include_lengths=False, pad_id=None):
         return out
 
 def _get_single_item(index, batch_size, src, tgt, idx, pad_id):
+    """
+    Parameters
+    ----------
+    index : int
+        the index of the batch to acquire
+    batch_size : int
+        the batch size to acquire the prediction
+    src : list
+        the list of code data
+    tgt : list
+        the list of annotation data
+    idx : list
+        the list of indices of related annotation and data
+    pad_id : int
+        the identifier to be used as pad
+
+    Returns
+    -------
+    tuple
+        the wrapped source code data, lengths, None, wrapped annotation data, indices, None and the batch
+    """
     src_batch, src_lengths = _batchify([src[index]] * batch_size, include_lengths=True, pad_id=pad_id)
     tgt_batch = _batchify([tgt[index]] * batch_size, pad_id=pad_id)
     idx_batch = tuple([idx[index]] * batch_size)
@@ -108,11 +159,39 @@ def _get_single_item(index, batch_size, src, tgt, idx, pad_id):
     return (wrap(src_batch), list(src_lengths)), None, wrap(tgt_batch), indices, None, idx_batch
 
 def _predict(model, batch):
+    """
+    Parameters
+    ----------
+    model : model
+        the model to be used to acquire the best candidate
+    batch : list
+        the batch to predict annotation
+
+    Returns
+    -------
+    tuple
+        indices of the predicted annotation
+    """
     outputs = model(batch, True)
     logits = model.generator.forward(outputs)
     return logits.data.max(1)[1].view(outputs.size(0), -1).T
 
 def _encode(tokens, vocab, unk_id=None):
+    """
+    Parameters
+    ----------
+    tokens : list
+        the list of tokens to be encoded
+    vocab : dict
+        the vocabulary with the tokens <-> indices relationship
+    unk_id : int
+        the identifier to be used as unk if any token has not a known identifier
+
+    Returns
+    -------
+    list
+        the tokens represented by the correspondent indices
+    """
     try:
         if len(tokens) > TOKEN_LIST_SIZE:
             tokens = tokens[:TOKEN_LIST_SIZE]
@@ -121,16 +200,57 @@ def _encode(tokens, vocab, unk_id=None):
         logging.error(e)
 
 def _get_tensors(indices):
+    """
+    Parameters
+    ----------
+    indices : list
+        the indices of a token list
+
+    Returns
+    -------
+    tensor
+        the representative tensor
+    """
     if USE_CUDA:
         return list(map(lambda e: torch.LongTensor(e).cuda(), indices))
     return list(map(torch.LongTensor, code_indices))
 
 def _decode(indices, vocab, end_id=None):
+    """
+    Parameters
+    ----------
+    indices : list
+        the indices of a token list
+    vocab : dict
+        the vocabulary with the indices <-> tokens relationship
+    end_id : int
+        the identifier to be used as end
+
+    Returns
+    -------
+    list
+        the tokens represented by the correspondent indices
+    """
     if end_id is not None:
         indices = indices[:indices.index(end_id)]
     return list(map(vocab.get, indices))
 
 def _set_eos_and_pad(tokens, pad_id, eos_id=None):
+    """
+    Parameters
+    ----------
+    tokens : list
+        the data list
+    pad_id : int
+        the identifier to be used as pad
+    eos_id : int
+        the identifier to be used as eos
+
+    Returns
+    -------
+    list
+        the list of data with the eos identifier added and also padded if necessary
+    """
     tokens_size = len(tokens)
     if eos_id:
         if tokens_size == TOKEN_LIST_SIZE:
@@ -145,9 +265,26 @@ def _set_eos_and_pad(tokens, pad_id, eos_id=None):
     return tokens
 
 def _invert(d):
+    """
+    Parameters
+    ----------
+    d : dict
+        the data list
+
+    Returns
+    -------
+    dict
+        the inverted dictionary
+    """
     return {v: k for (k, v) in d.items()}
 
 def _set_seed(v):
+    """
+    Parameters
+    ----------
+    v : int
+        the seed to be set
+    """
     torch.manual_seed(v)
     np.random.seed(v)
     random.seed(v)
@@ -157,6 +294,17 @@ def _set_seed(v):
         torch.cuda.manual_seed(v)
 
 def _load_model(model_conf):
+    """
+    Parameters
+    ----------
+    model_conf : dict
+        the model configuration
+
+    Returns
+    -------
+    model
+        the loaded model
+    """
     model_values = '_'.join([f'{k}{v}' for k, v in model_conf.items()])
     model_id = MODEL_BASE_ID.format(model_values)
     model_name = os.path.join(MODEL_BASE_DIR, model_id, f'{model_id}_{MODEL_NUMBER[LANG]}.pt')
@@ -170,16 +318,79 @@ def _load_model(model_conf):
     return model
 
 def _load_file(filename):
+    """
+    Parameters
+    ----------
+    filename : str
+        the file name to be loaded
+
+    Returns
+    -------
+    pickle
+        the pickle representation
+    """
     with open(filename, 'rb') as f:
         return pickle.load(f, encoding='latin1')
 
 def _load_vocabs(vocab_conf):
+    """
+    Parameters
+    ----------
+    vocab_conf : dict
+        the vocabulary configuration
+
+    Returns
+    -------
+    dict
+        the code vocabulary
+    dict
+        the inverted code vocabulary
+    dict
+        the annotation vocabulary
+    dict
+        the inverted annotation vocabulary
+    """
     code_vocab, qt_vocab = [_load_file(os.path.join(WORK_DIR, filename))
                             for _, filename in vocab_conf.items()]
 
     return code_vocab, _invert(code_vocab), qt_vocab, _invert(qt_vocab)
 
 def _load_tokens(data_conf, data_set_name, code_vocab, qt_vocab, unk_id, pad_id, eos_id):
+    """
+    Parameters
+    ----------
+    data_conf : dict
+        the data configuration
+    data_set_name : str
+        data set name for indices
+    code_vocab : dict
+        the code vocabulary
+    qt_vocab : dict
+        the annotation vocabulary
+    unk_id : int
+        the identifier to be used as unk if any token has not a known identifier
+    pad_id : int
+        the identifier to be used as pad
+    eos_id : int
+        the identifier to be used as eos
+
+    Returns
+    -------
+    pickle
+        the pickle code tokens representations
+    list
+        the code tokens indices representations
+    list
+        the code tokens tensors representations
+    pickle
+        the pickle annotation tokens representations
+    list
+        the annotation tokens indices representations
+    list
+        the annotation tokens tensors representations
+    list
+        the list of indices of related annotation and data
+    """
     code_tokens_set, qt_tokens_set, split_indices = [_load_file(os.path.join(WORK_DIR, filename))
                                                      for _, filename in data_conf.items()]
 

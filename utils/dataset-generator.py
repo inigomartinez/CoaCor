@@ -1,6 +1,6 @@
 """
 @author: Iñigo Martínez <inigo.martinez@tecnalia.com>
-@copyright: 2022 Tecnalia
+@copyright: 2022-2023 Tecnalia
 """
 
 from ast import literal_eval
@@ -103,11 +103,30 @@ current_token_id = 1
 
 
 def _read(filename):
+    """
+    Parameters
+    ----------
+    filename : str
+        the file name to be loaded
+
+    Returns
+    -------
+    pickle
+        the pickle representation
+    """
     with open(filename, 'rb') as f:
         return pickle.load(f, encoding='latin1')
 
 
 def _write(filename, o):
+    """
+    Parameters
+    ----------
+    filename : str
+        the file name to be loaded
+    o : object
+        the data to be written in the file
+    """
     filename = os.path.join(OUTPUT_DIR, DATASET_NAME, LANG, filename)
     path = os.path.dirname(os.path.abspath(filename))
     if not os.path.exists(path):
@@ -118,10 +137,36 @@ def _write(filename, o):
 
 
 def _invert(d):
+    """
+    Parameters
+    ----------
+    d : dict
+        the data list
+
+    Returns
+    -------
+    dict
+        the inverted dictionary
+    """
     return {val: key for (key, val) in d.items()}
 
 
 def _encode(tokens, vocab, unk=None):
+    """
+    Parameters
+    ----------
+    tokens : list
+        the list of tokens to be encoded
+    vocab : dict
+        the vocabulary with the tokens <-> indices relationship
+    unk : int
+        the identifier to be used as unk if any token has not a known identifier
+
+    Returns
+    -------
+    str
+        the string of the tokens represented by the correspondent indices
+    """
     try:
         return ' '.join(map(str, map(lambda x: vocab.get(x, unk), tokens)))
     except Exception as e:
@@ -129,20 +174,74 @@ def _encode(tokens, vocab, unk=None):
 
 
 def _encode_tokens(tokens_data, index_vocabs):
+    """
+    Parameters
+    ----------
+    tokens_data : list
+        the list of tokens to be encoded
+    index_vocabs : dict
+        the vocabulary with the tokens <-> indices relationship
+
+    Returns
+    -------
+    typle
+        the tokens represented by the correspondent indices and the tokens data
+    """
     return tuple(map(lambda e: (e, _encode(e, index_vocabs)), tokens_data))
 
 
 def _decode(indices, vocab):
+    """
+    Parameters
+    ----------
+    indices : str
+        the indices of a token list
+    vocab : dict
+        the vocabulary with the indices <-> tokens relationship
+
+    Returns
+    -------
+    list
+        the tokens represented by the correspondent indices
+    """
     return [vocab[idx] for idx in map(int, indices.split())]
 
 
 def _id_tokens(tokens, start=0, sort=False):
+    """
+    Parameters
+    ----------
+    tokens : list
+        the list of tokens to be assigned and unique identifier
+    start : int
+        the starting identifier
+    sort : bool
+        if the list of tokens should be sorted
+
+    Returns
+    -------
+    list
+        the list of tokens with the assigned identifiers
+    """
     if sort:
         tokens = sorted(tokens)
     return dict(zip(range(start, start + len(tokens)), tokens))
 
 
 def _id_global_tokens(tokens, sort=False):
+    """
+    Parameters
+    ----------
+    tokens : list
+        the list of tokens to be assigned and unique identifier
+    sort : bool
+        if the list of tokens should be sorted
+
+    Returns
+    -------
+    list
+        the list of tokens with the assigned identifiers using the global identifier list
+    """
     global current_token_id
 
     if sort:
@@ -155,7 +254,22 @@ def _id_global_tokens(tokens, sort=False):
     return id_tokens
 
 
-def _process_data(dataset, doc_tokens, code_tokens, limit=None):
+def _process_data(doc_tokens, code_tokens, limit=None):
+    """
+    Parameters
+    ----------
+    doc_tokens : list
+        the list of annotation tokens to be processed
+    code_tokens : list
+        the list of source code tokens to be processed
+    limit : int
+        if the token list must be trimmed to the limited value
+
+    Returns
+    -------
+    dict
+        the list of tokens with their particular vocabulary
+    """
     tokens = {'qt': doc_tokens, 'code': code_tokens}
 
     if limit:
@@ -168,6 +282,19 @@ def _process_data(dataset, doc_tokens, code_tokens, limit=None):
 
 
 def _get_index_set_type_vocabs(data, sort=False):
+    """
+    Parameters
+    ----------
+    data : dict
+        the different vocabularies data
+    sort : bool
+        if the list of tokens should be sorted
+
+    Returns
+    -------
+    dict
+        the list of indexed vocabularies sorted by set type
+    """
     id_set_type_vocabs = {set_type: BASE_VOCAB[set_type] | _id_tokens(set(chain(*[vocabs_set_data
                                                                                   for tokens_data in data.values()
                                                                                   for vocabs_set_type, vocabs_set_data
@@ -184,6 +311,17 @@ def _get_index_set_type_vocabs(data, sort=False):
 
 
 def _get_split_indices(data):
+    """
+    Parameters
+    ----------
+    data : dict
+        the different data items
+
+    Returns
+    -------
+    dict
+        the list of indexed data sorted by set type
+    """
     split_indices = {tokens_type: tuple(map(lambda e: (e[0], e[0], e[2]), tokens_data))
                      for tokens_type, tokens_data in data.items()}
     split_indices['valid'] = split_indices.pop('validation')
@@ -192,12 +330,36 @@ def _get_split_indices(data):
 
 
 def _get_indices_and_tokens(id_data):
+    """
+    Parameters
+    ----------
+    id_data : dict
+        the different data items
+
+    Returns
+    -------
+    dict
+        the list of indexed data
+    """
     return dict(map(lambda e: (e[0], list(map(lambda l: tuple(chain(*l)),
                                               zip(e[1]['qt'].items(), e[1]['code'].items())))),
                     id_data.items()))
 
 
 def _process_tokens(data, index_set_type_vocabs):
+    """
+    Parameters
+    ----------
+    data : dict
+        the different data items
+    index_set_type_vocabs : dict
+        the different set type dictionaries with indices
+
+    Returns
+    -------
+    dict
+        the list of indexed data
+    """
     return {tokens_type: {tokens_set_type: _id_global_tokens(_encode_tokens(tokens_set_data,
                                                                             index_set_type_vocabs[tokens_set_type]))
                           for tokens_set_type, tokens_set_data in tokens_data['tokens'].items()}
@@ -205,6 +367,14 @@ def _process_tokens(data, index_set_type_vocabs):
 
 
 def _write_vocabs(lang, index_set_type_vocabs):
+    """
+    Parameters
+    ----------
+    lang : str
+        the correspondent language
+    index_set_type_vocabs : dict
+        the different set type vocabularies with indices
+    """
     for set_type, set_data in index_set_type_vocabs.items():
         name = f'{lang}.{set_type}.vocab.pkl'
         _write(os.path.join(SOURCE_DATA_DIR, name), set_data)
@@ -213,6 +383,14 @@ def _write_vocabs(lang, index_set_type_vocabs):
 
 
 def _write_index_to_tokenized_data(lang, id_data):
+    """
+    Parameters
+    ----------
+    lang : str
+        the correspondent language
+    id_data : dict
+        the different set type tokens data with indices
+    """
     set_type_index_to_tokenized = {set_type: dict(ChainMap(*[dict(map(lambda e: (e[0], e[1][0]),
                                                                       tokens_set_data.items()))
                                                              for tokens_data in id_data.values()
@@ -225,6 +403,14 @@ def _write_index_to_tokenized_data(lang, id_data):
 
 
 def _write_indexed_encoded_data(lang, encoded_data):
+    """
+    Parameters
+    ----------
+    lang : str
+        the correspondent language
+    encoded_data : dict
+        the different set type encoded tokens data
+    """
     for tokens_type, tokens_data in encoded_data.items():
         if tokens_type == 'validation':
             tokens_type = 'val'
@@ -239,6 +425,14 @@ def _write_indexed_encoded_data(lang, encoded_data):
 
 
 def _write_codenn_dev_files(lang, set_data):
+    """
+    Parameters
+    ----------
+    lang : str
+        the correspondent language
+    set_data : dict
+        the different set type set tokens data
+    """
     out_dir = os.path.join(SOURCE_DATA_DIR, CODENN_DATA_DIR.format(lang))
 
     # we limit the available split indices
@@ -282,6 +476,16 @@ def _write_codenn_dev_files(lang, set_data):
 
 
 def _write_files(data, lang, sort=False):
+    """
+    Parameters
+    ----------
+    data : dict
+        the tokens data
+    lang : str
+        the correspondent language
+    sort : bool
+        if the list of tokens should be sorted
+    """
     index_set_type_vocabs = _get_index_set_type_vocabs(data, sort)
     _write_vocabs(lang, index_set_type_vocabs)
 
@@ -300,6 +504,23 @@ def _write_files(data, lang, sort=False):
 
 
 def _load_all(lang):
+    """
+    Parameters
+    ----------
+    lang : str
+        the correspondent language
+
+    Returns
+    -------
+    dict
+        the annotation and source code data
+    dict
+        the annotation vocabulary
+    dict
+        the source code vocabulary
+    dict
+        the development files data
+    """
     doc_datas = {Path(filename.format(lang)).stem: _read(os.path.join(SOURCE_DATA_DIR, filename.format(lang)))
                  for filename in PKL_FILES}
 
@@ -322,7 +543,7 @@ def _load_all(lang):
                  for dev_type in DEV_TYPES
                  for filename in CODENN_FILES}
 
-    codenn_ga_datas = {Path(f'codenn.{lang}.{dev_type}.ga.pkl'.format(dev_type)).stem:
+    codenn_ga_datas = {Path(f'codenn.{lang}.{dev_type}.ga.pkl').stem:
                            _read(os.path.join(CODE_RETRIEVAL_DATA_DIR, f'codenn.{lang}.{dev_type}.ga.pkl'))
                        for dev_type in DEV_TYPES}
 
@@ -377,6 +598,12 @@ def _load_all(lang):
 
 
 def _check_datas(langs):
+    """
+    Parameters
+    ----------
+    langs : list
+        the languages
+    """
     doc_datas = {lang: {Path(filename.format(lang)).stem: _read(os.path.join(SOURCE_DATA_DIR, filename.format(lang)))
                         for filename in PKL_FILES}
                  for lang in langs}
@@ -385,6 +612,12 @@ def _check_datas(langs):
 
 
 def _check_train(langs):
+    """
+    Parameters
+    ----------
+    langs : list
+        the languages
+    """
     train_datas = {lang: {f'{lang}.{train_type}.{set_type}':
                               _read(os.path.join(CODE_RETRIEVAL_DATA_DIR, f'{lang}.{train_type}.{set_type}.pkl'))
                           for train_type in TRAIN_TYPE
@@ -394,7 +627,13 @@ def _check_train(langs):
     return None
 
 
-def _check_anno(langs, vocabs=None):
+def _check_anno(langs):
+    """
+    Parameters
+    ----------
+    langs : list
+        the languages
+    """
     anno_datas = {lang: {Path(f'{lang}.{train_type}.anno_{anno_type}.pkl').stem:
                              _read(os.path.join(CODE_RETRIEVAL_DATA_DIR,
                                                 f'{lang}.{train_type}.anno_{anno_type}.pkl'))
@@ -420,7 +659,13 @@ def _check_anno(langs, vocabs=None):
     return None
 
 
-def _check_combine(langs, vocabs=None):
+def _check_combine(langs):
+    """
+    Parameters
+    ----------
+    langs : list
+        the languages
+    """
     codenn_combine_datas = {lang: {Path(f'codenn_combine_new.{lang}.{dev_type}.{set_type}.pkl').stem:
                                        _read(os.path.join(CODE_RETRIEVAL_DATA_DIR,
                                                           f'codenn_combine_new.{lang}.{dev_type}.{set_type}.pkl'))
@@ -432,11 +677,33 @@ def _check_combine(langs, vocabs=None):
 
 
 def _load_dataset_code_search_net(lang):
+    """
+    Parameters
+    ----------
+    lang : str
+        the correspondant language
+
+    Returns
+    -------
+    dict
+        the code search dataset data
+    """
     dataset = load_dataset('code_search_net', lang)
-    return {k: _process_data(v, v['func_documentation_tokens'], v['func_code_tokens']) for k, v in dataset.items()}
+    return {k: _process_data(v['func_documentation_tokens'], v['func_code_tokens']) for k, v in dataset.items()}
 
 
 def _load_dataset_proxya(lang):
+    """
+    Parameters
+    ----------
+    lang : str
+        the correspondant language
+
+    Returns
+    -------
+    dict
+        the proxya dataset data
+    """
     data = pd.concat([pd.read_csv(os.path.join(PROXYA_DATASET_SRC_DIR, f),
                                   converters={'docstring_tokens': literal_eval, 'func_code_tokens': literal_eval})
                       for f in PROXYA_DATASET_FILES[lang]], axis=0)
@@ -454,7 +721,7 @@ def _load_dataset_proxya(lang):
         'validation': {'qt': qt_val, 'code': code_val},
     }
 
-    return {k: _process_data(v, v['qt'], v['code']) for k, v in data.items()}
+    return {k: _process_data(v['qt'], v['code']) for k, v in data.items()}
 
 
 if __name__ == '__main__':
@@ -471,8 +738,8 @@ if __name__ == '__main__':
 
         # _check_datas(langs)
         _check_train(langs)
-        _check_anno(langs, vocabs)
-        _check_combine(langs, vocabs)
+        _check_anno(langs)
+        _check_combine(langs)
 
     if DATASET_NAME == 'proxya':
         data = _load_dataset_proxya(LANG)
